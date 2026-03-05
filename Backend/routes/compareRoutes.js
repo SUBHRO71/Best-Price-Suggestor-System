@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 const { compareProducts } = require("../services/compareService");
+const authenticateToken = require("../middleware/authMiddleware");
+
+router.use(authenticateToken);
 
 router.get("/compare", async (req, res) => {
     try {

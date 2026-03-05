@@ -6,6 +6,9 @@ const scrapeAmazon = require("../services/amazonScraper");
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Price = require("../models/Price");
+const authenticateToken = require("../middleware/authMiddleware");
+
+router.use(authenticateToken);
 
 async function updateProductStoreLink(productId, storeName, products) {
     const firstValidLink = products.find((item) => item?.link)?.link;
@@ -22,9 +25,7 @@ async function updateProductStoreLink(productId, storeName, products) {
 }
 
 router.get("/scrape/flipkart", async (req, res) => {
-
     try {
-
         const query = req.query.q;
 
         if (!query) {
@@ -60,23 +61,17 @@ router.get("/scrape/flipkart", async (req, res) => {
         await updateProductStoreLink(productDoc._id, "Flipkart", products);
 
         res.json(products);
-
     } catch (error) {
-
         console.error(error);
 
         res.status(500).json({
             error: error.message
         });
-
     }
-
 });
 
 router.get("/scrape/amazon", async (req, res) => {
-
     try {
-
         const query = req.query.q;
 
         if (!query) {
@@ -112,17 +107,13 @@ router.get("/scrape/amazon", async (req, res) => {
         await updateProductStoreLink(productDoc._id, "Amazon", products);
 
         res.json(products);
-
     } catch (error) {
-
         console.error(error);
 
         res.status(500).json({
             error: error.message
         });
-
     }
-
 });
 
 module.exports = router;

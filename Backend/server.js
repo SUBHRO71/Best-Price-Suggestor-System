@@ -9,6 +9,7 @@ const priceRoutes = require("./routes/priceRoutes");
 const scraperRoutes = require("./routes/scraperRoutes");
 const storeRoutes = require("./routes/storeRoutes");
 const compareRoutes = require("./routes/compareRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -21,7 +22,8 @@ app.get("/", (req, res) => {
     res.send("Price Comparison API Running");
 });
 
-app.use("/api", productRoutes); 
+app.use("/api", authRoutes);
+app.use("/api", productRoutes);
 app.use("/api", searchRoutes);
 app.use("/api", priceRoutes);
 app.use("/api", scraperRoutes);

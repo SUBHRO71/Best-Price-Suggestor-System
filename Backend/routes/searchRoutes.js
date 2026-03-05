@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { compareProducts } = require("../services/compareService");
+const authenticateToken = require("../middleware/authMiddleware");
+
+router.use(authenticateToken);
 
 router.get("/search", async (req, res) => {
     try {
@@ -20,7 +23,6 @@ router.get("/search", async (req, res) => {
         }
 
         return res.json(response);
-
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
