@@ -6,9 +6,6 @@ const scrapeAmazon = require("../services/amazonScraper");
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Price = require("../models/Price");
-const authenticateToken = require("../middleware/authMiddleware");
-
-router.use(authenticateToken);
 
 async function updateProductStoreLink(productId, storeName, products) {
     const firstValidLink = products.find((item) => item?.link)?.link;

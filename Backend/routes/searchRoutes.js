@@ -2,10 +2,18 @@ const express = require("express");
 const router = express.Router();
 const { compareProducts } = require("../services/compareService");
 const authenticateToken = require("../middleware/authMiddleware");
+const { createRateLimiter, getClientIp } = require("../middleware/rateLimitMiddleware");
 
 router.use(authenticateToken);
 
-router.get("/search", async (req, res) => {
+const searchRateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => req.user?.sub || getClientIp(req),
+    message: "Rate limit exceeded for /search. Try again in a minute."
+});
+
+router.get("/search", searchRateLimiter, async (req, res) => {
     try {
         const query = req.query.q?.trim();
 

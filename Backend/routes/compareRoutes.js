@@ -3,10 +3,18 @@ const router = express.Router();
 
 const { compareProducts } = require("../services/compareService");
 const authenticateToken = require("../middleware/authMiddleware");
+const { createRateLimiter, getClientIp } = require("../middleware/rateLimitMiddleware");
 
 router.use(authenticateToken);
 
-router.get("/compare", async (req, res) => {
+const compareRateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    keyGenerator: (req) => req.user?.sub || getClientIp(req),
+    message: "Rate limit exceeded for /compare. Try again in a minute."
+});
+
+router.get("/compare", compareRateLimiter, async (req, res) => {
     try {
         const query = req.query.q?.trim();
 
