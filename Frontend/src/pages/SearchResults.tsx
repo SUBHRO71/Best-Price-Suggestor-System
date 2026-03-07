@@ -5,7 +5,8 @@ import SearchBar from "@/components/SearchBar";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, Loader2, PackageSearch } from "lucide-react";
+import { addToWishlist } from "@/lib/api";
+import { ArrowLeft, Eye, Heart, Loader2, PackageSearch } from "lucide-react";
 import type { SearchResult } from "@/lib/api";
 
 const storeColors: Record<string, string> = {
@@ -40,6 +41,20 @@ const SearchResults = () => {
   const handleViewDeals = (product: SearchResult) => {
     selectProduct(product);
     navigate(`/compare?q=${encodeURIComponent(results?.query || product.name)}`);
+  };
+
+  const handleAddToWishlist = async (product: SearchResult) => {
+    try {
+      await addToWishlist({
+        name: product.name,
+        store: product.store,
+        price: product.price,
+        link: product.link,
+      });
+      toast.success("Added to wishlist");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add to wishlist");
+    }
   };
 
   if (loading) {
@@ -121,14 +136,24 @@ const SearchResults = () => {
                 Rs {product.price.toLocaleString("en-IN")}
               </p>
 
-              <Button
-                variant="hero"
-                className="w-full gap-2 rounded-xl"
-                onClick={() => handleViewDeals(product)}
-              >
-                <Eye className="h-4 w-4" />
-                Compare Prices
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="hero"
+                  className="w-full gap-2 rounded-xl"
+                  onClick={() => handleViewDeals(product)}
+                >
+                  <Eye className="h-4 w-4" />
+                  Compare
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 rounded-xl"
+                  onClick={() => handleAddToWishlist(product)}
+                >
+                  <Heart className="h-4 w-4" />
+                  Wishlist
+                </Button>
+              </div>
             </div>
           ))}
         </div>

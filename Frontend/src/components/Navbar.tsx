@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { Heart, LogOut, User } from "lucide-react";
 
 const Navbar = () => {
   const { isLoggedIn, user, logout } = useAuth();
@@ -23,6 +23,12 @@ const Navbar = () => {
             <>
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm">Dashboard</Button>
+              </Link>
+              <Link to="/wishlist">
+                <Button variant="ghost" size="sm" className="gap-1.5">
+                  <Heart className="h-4 w-4" />
+                  Wishlist
+                </Button>
               </Link>
               <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5">
                 <User className="h-4 w-4 text-muted-foreground" />

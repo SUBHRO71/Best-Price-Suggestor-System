@@ -126,6 +126,29 @@ export interface SearchResponse {
   results: SearchResult[];
 }
 
+export interface WishlistItem {
+  _id: string;
+  user_id: string;
+  product_id:
+    | string
+    | {
+        _id: string;
+        name: string;
+        normalized_name: string;
+        links?: { store: string; url: string }[];
+      };
+  product_name: string;
+  store: string;
+  price?: number;
+  product_url?: string;
+  added_at: string;
+}
+
+export interface WishlistResponse {
+  total: number;
+  results: WishlistItem[];
+}
+
 export async function searchProducts(query: string): Promise<SearchResponse> {
   const res = await authFetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error(await parseApiError(res, "Search failed"));
@@ -138,4 +161,34 @@ export async function compareProducts(query: string): Promise<SearchResponse> {
   if (!res.ok) throw new Error(await parseApiError(res, "Comparison failed"));
   const data = await res.json();
   return data;
+}
+
+export async function getWishlist(): Promise<WishlistResponse> {
+  const res = await authFetch(`${API_BASE}/wishlist`);
+  if (!res.ok) throw new Error(await parseApiError(res, "Failed to load wishlist"));
+  const data = await res.json();
+  return data;
+}
+
+export async function addToWishlist(payload: {
+  productId?: string;
+  name: string;
+  store?: string;
+  price?: number;
+  link?: string | null;
+}): Promise<WishlistItem> {
+  const res = await authFetch(`${API_BASE}/wishlist`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await parseApiError(res, "Failed to add product to wishlist"));
+  const data = await res.json();
+  return data.item;
+}
+
+export async function removeWishlistItem(id: string): Promise<void> {
+  const res = await authFetch(`${API_BASE}/wishlist/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(await parseApiError(res, "Failed to remove wishlist item"));
 }

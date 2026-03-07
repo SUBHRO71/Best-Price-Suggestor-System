@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import SearchResults from "./pages/SearchResults";
 import ProductComparison from "./pages/ProductComparison";
+import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/results" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
               <Route path="/compare" element={<ProtectedRoute><ProductComparison /></ProtectedRoute>} />
+              <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SearchProvider>

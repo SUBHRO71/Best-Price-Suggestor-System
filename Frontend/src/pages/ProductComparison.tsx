@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSearch } from "@/contexts/SearchContext";
-import { compareProducts, type SearchResponse } from "@/lib/api";
+import { addToWishlist, compareProducts, type SearchResponse } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Crown, ExternalLink, Loader2, PackageSearch } from "lucide-react";
+import { ArrowLeft, Crown, ExternalLink, Heart, Loader2, PackageSearch } from "lucide-react";
 import { toast } from "sonner";
 
 const ProductComparison = () => {
@@ -85,6 +85,21 @@ const ProductComparison = () => {
   const highestPrice = comparison.results.length ? Math.max(...comparison.results.map((r) => r.price)) : 0;
   const savings = bestDeal ? highestPrice - bestDeal.price : 0;
 
+  const handleAddToWishlist = async () => {
+    if (!bestDeal) return;
+    try {
+      await addToWishlist({
+        name: bestDeal.name,
+        store: bestDeal.store,
+        price: bestDeal.price,
+        link: bestDeal.link,
+      });
+      toast.success("Added to wishlist");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add to wishlist");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -136,18 +151,24 @@ const ProductComparison = () => {
                   <p className="text-4xl font-bold text-primary">
                     Rs {bestDeal.price.toLocaleString("en-IN")}
                   </p>
-                  {bestDeal.link ? (
-                    <a href={bestDeal.link} target="_blank" rel="noopener noreferrer">
-                      <Button variant="hero" size="lg" className="gap-2 rounded-xl shadow-primary">
-                        <ExternalLink className="h-5 w-5" />
-                        Buy on {bestDeal.store}
+                  <div className="flex gap-2">
+                    {bestDeal.link ? (
+                      <a href={bestDeal.link} target="_blank" rel="noopener noreferrer">
+                        <Button variant="hero" size="lg" className="gap-2 rounded-xl shadow-primary">
+                          <ExternalLink className="h-5 w-5" />
+                          Buy on {bestDeal.store}
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button variant="outline" size="lg" className="rounded-xl" disabled>
+                        Link unavailable
                       </Button>
-                    </a>
-                  ) : (
-                    <Button variant="outline" size="lg" className="rounded-xl" disabled>
-                      Link unavailable
+                    )}
+                    <Button variant="outline" size="lg" className="gap-2 rounded-xl" onClick={handleAddToWishlist}>
+                      <Heart className="h-5 w-5" />
+                      Wishlist
                     </Button>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
