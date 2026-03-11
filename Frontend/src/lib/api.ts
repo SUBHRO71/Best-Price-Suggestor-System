@@ -111,7 +111,8 @@ export function isAuthenticated() {
 }
 
 export interface SearchResult {
-  store: string;
+  productId?: string | null;
+  store?: string | null;
   name: string;
   price: number;
   link: string | null;

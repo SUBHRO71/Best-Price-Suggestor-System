@@ -7,6 +7,7 @@ const searchRoutes = require("./routes/searchRoutes");
 const compareRoutes = require("./routes/compareRoutes");
 const authRoutes = require("./routes/authRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
+const { startCatalogCleanupJob } = require("./services/catalogCleanupService");
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 connectDB();
+startCatalogCleanupJob();
 
 app.get("/", (req, res) => {
     res.send("Price Comparison API Running");

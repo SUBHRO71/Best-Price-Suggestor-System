@@ -16,8 +16,8 @@ const ProductComparison = () => {
   const [loading, setLoading] = useState(false);
 
   const query = useMemo(
-    () => searchParams.get("q")?.trim() || results?.query || selectedProduct?.name || "",
-    [searchParams, results?.query, selectedProduct?.name]
+    () => searchParams.get("q")?.trim() || selectedProduct?.name || results?.query || "",
+    [searchParams, selectedProduct?.name, results?.query]
   );
 
   useEffect(() => {

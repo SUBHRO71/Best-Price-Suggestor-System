@@ -2,6 +2,12 @@
 
 Backend API for product price comparison (Amazon + Flipkart), with JWT authentication and MongoDB persistence.
 
+Catalog retention:
+
+- Search/comparison cache data in `Product` and `Price` is treated as temporary catalog cache.
+- Cached catalog rows expire on a 7-day window aligned with the refresh-token lifetime.
+- A backend cleanup job runs every 15 minutes and deletes expired catalog data, while preserving products referenced by user wishlists.
+
 ## Base URL
 
 - Local: `http://localhost:5000`
@@ -157,10 +163,12 @@ All comparison endpoints are protected.
 
 #### `GET /api/search?q=<query>`
 
-Compares product prices with DB-first strategy:
+Returns a product-list search response with DB-first backfill:
 
-- Tries cached DB data first (requires at least 2 stores).
-- If not enough cached data, scrapes stores and persists latest best price per store.
+- Serves cached generic product matches from MongoDB first.
+- Deduplicates repeated products before returning them.
+- Search results are store-agnostic; store comparison is deferred to `/api/compare` after a product is selected.
+- If fewer than 10 cached matches exist, scrapes stores and appends only non-duplicate products until the response reaches 10 items or store results are exhausted.
 
 Auth: Yes
 
@@ -174,29 +182,26 @@ Success response (`200`):
 
 ```json
 {
-  "source": "database",
+  "source": "hybrid",
   "query": "iphone 15",
-  "total": 2,
+  "total": 10,
   "bestDeal": {
-    "store": "Amazon",
-    "name": "iPhone 15",
+    "name": "Apple iPhone 15 (Black, 128 GB)",
     "price": 68999,
-    "link": "https://www.amazon.in/...",
+    "link": null,
     "scrapedAt": "2026-03-07T06:00:00.000Z"
   },
   "results": [
     {
-      "store": "Amazon",
-      "name": "iPhone 15",
+      "name": "Apple iPhone 15 (Black, 128 GB)",
       "price": 68999,
-      "link": "https://www.amazon.in/...",
+      "link": null,
       "scrapedAt": "2026-03-07T06:00:00.000Z"
     },
     {
-      "store": "Flipkart",
-      "name": "iPhone 15",
-      "price": 69999,
-      "link": "https://www.flipkart.com/...",
+      "name": "Apple iPhone 15 (Pink, 128 GB)",
+      "price": 69499,
+      "link": null,
       "scrapedAt": "2026-03-07T06:00:00.000Z"
     }
   ]
@@ -205,8 +210,9 @@ Success response (`200`):
 
 Possible `source` values:
 
-- `database` (served from cached DB data)
-- `scraper` (fresh scraped data)
+- `database` (all returned items came from cached DB data)
+- `scraper` (all returned items came from fresh scraping)
+- `hybrid` (cached DB data was backfilled with fresh scraped items)
 
 Errors:
 

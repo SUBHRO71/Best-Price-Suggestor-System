@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { compareProducts } = require("../services/compareService");
+const { searchProducts } = require("../services/searchService");
 const authenticateToken = require("../middleware/authMiddleware");
 const { createRateLimiter, getClientIp } = require("../middleware/rateLimitMiddleware");
 
@@ -21,9 +21,8 @@ router.get("/search", searchRateLimiter, async (req, res) => {
             return res.status(400).json({ message: "Query parameter q is required" });
         }
 
-        const response = await compareProducts(query, {
-            dbFirst: true,
-            minStoresRequired: 2
+        const response = await searchProducts(query, {
+            limit: 10
         });
 
         if (!response.results.length) {

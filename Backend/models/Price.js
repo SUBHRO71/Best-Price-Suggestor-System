@@ -24,6 +24,10 @@ const priceSchema = new mongoose.Schema({
     scraped_at: {
         type: Date,
         default: Date.now
+    },
+    expires_at: {
+        type: Date,
+        index: true
     }
 });
 

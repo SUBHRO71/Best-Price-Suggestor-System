@@ -9,11 +9,6 @@ import { addToWishlist } from "@/lib/api";
 import { ArrowLeft, Eye, Heart, Loader2, PackageSearch } from "lucide-react";
 import type { SearchResult } from "@/lib/api";
 
-const storeColors: Record<string, string> = {
-  Amazon: "bg-[hsl(45,100%,51%)] text-[hsl(0,0%,10%)]",
-  Flipkart: "bg-[hsl(220,80%,55%)] text-[hsl(0,0%,100%)]",
-};
-
 const SearchResults = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,16 +35,15 @@ const SearchResults = () => {
 
   const handleViewDeals = (product: SearchResult) => {
     selectProduct(product);
-    navigate(`/compare?q=${encodeURIComponent(results?.query || product.name)}`);
+    navigate(`/compare?q=${encodeURIComponent(product.name)}`);
   };
 
   const handleAddToWishlist = async (product: SearchResult) => {
     try {
       await addToWishlist({
+        productId: product.productId || undefined,
         name: product.name,
-        store: product.store,
         price: product.price,
-        link: product.link,
       });
       toast.success("Added to wishlist");
     } catch (err: any) {
@@ -107,7 +101,7 @@ const SearchResults = () => {
               Results for "<span className="text-primary">{results.query}</span>"
             </h1>
             <p className="text-sm text-muted-foreground">
-              {results.total} listing{results.total !== 1 ? "s" : ""} found across stores - Source: {results.source}
+              {results.total} product result{results.total !== 1 ? "s" : ""} found - Source: {results.source}
             </p>
           </div>
         </div>
@@ -115,15 +109,9 @@ const SearchResults = () => {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {results.results.map((product, i) => (
             <div
-              key={`${product.store}-${i}`}
+              key={product.productId || `${product.name}-${i}`}
               className="group relative flex flex-col rounded-2xl border-2 border-border bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${storeColors[product.store] || "bg-muted text-muted-foreground"}`}>
-                  {product.store}
-                </span>
-              </div>
-
               <div className="mb-4 flex h-40 items-center justify-center rounded-xl bg-muted/50">
                 <PackageSearch className="h-16 w-16 text-muted-foreground/30" />
               </div>
@@ -131,6 +119,10 @@ const SearchResults = () => {
               <h3 className="mb-3 line-clamp-2 flex-1 text-base font-semibold leading-snug text-foreground">
                 {product.name}
               </h3>
+
+              <p className="mb-1 text-sm text-muted-foreground">
+                Best observed price
+              </p>
 
               <p className="mb-4 text-2xl font-bold text-foreground">
                 Rs {product.price.toLocaleString("en-IN")}
