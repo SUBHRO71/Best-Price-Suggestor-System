@@ -37,6 +37,10 @@ Backend uses these environment variables:
 - `JWT_ACCESS_SECRET` (recommended)
 - `JWT_REFRESH_SECRET` (required for refresh flow)
 - `CHROME_EXECUTABLE_PATH` (optional, used by Flipkart scraper)
+- `GEMINI_API_KEY` (optional, enables Gemini-based relevance filtering for scraped results)
+- `GEMINI_MODEL` (optional, defaults to `gemini-2.5-flash`)
+
+If `GEMINI_API_KEY` is not set, the backend falls back to a local heuristic relevance filter that removes many common mismatches such as accessories and adjacent categories.
 
 ## Health Endpoint
 

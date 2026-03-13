@@ -157,8 +157,13 @@ export async function searchProducts(query: string): Promise<SearchResponse> {
   return data;
 }
 
-export async function compareProducts(query: string): Promise<SearchResponse> {
-  const res = await authFetch(`${API_BASE}/compare?q=${encodeURIComponent(query)}`);
+export async function compareProducts(query: string, contextQuery?: string): Promise<SearchResponse> {
+  const params = new URLSearchParams({ q: query });
+  if (contextQuery?.trim()) {
+    params.set("context", contextQuery.trim());
+  }
+
+  const res = await authFetch(`${API_BASE}/compare?${params.toString()}`);
   if (!res.ok) throw new Error(await parseApiError(res, "Comparison failed"));
   const data = await res.json();
   return data;

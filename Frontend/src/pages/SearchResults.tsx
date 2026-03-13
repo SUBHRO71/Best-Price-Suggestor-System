@@ -35,7 +35,11 @@ const SearchResults = () => {
 
   const handleViewDeals = (product: SearchResult) => {
     selectProduct(product);
-    navigate(`/compare?q=${encodeURIComponent(product.name)}`);
+    const params = new URLSearchParams({
+      q: product.name,
+      context: results?.query || product.name,
+    });
+    navigate(`/compare?${params.toString()}`);
   };
 
   const handleAddToWishlist = async (product: SearchResult) => {

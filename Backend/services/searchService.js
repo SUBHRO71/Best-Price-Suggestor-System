@@ -2,16 +2,9 @@ const Product = require("../models/Product");
 const Price = require("../models/Price");
 const scrapeFlipkart = require("./flipkartScraper");
 const scrapeAmazon = require("./amazonScraper");
+const { normalizeText, filterRelevantItems } = require("./relevanceFilterService");
 
 const TARGET_RESULT_COUNT = 10;
-
-function normalizeText(value) {
-    return String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
-        .replace(/\s+/g, " ");
-}
 
 function escapeRegex(value) {
     return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -133,7 +126,8 @@ async function getDatabaseSearchResults(query, limit = TARGET_RESULT_COUNT) {
         });
     }
 
-    return dedupeResults(rawResults).map(toGenericSearchResult).slice(0, limit);
+    const filtered = await filterRelevantItems(trimmedQuery, rawResults);
+    return dedupeResults(filtered.accepted).map(toGenericSearchResult).slice(0, limit);
 }
 
 async function getScrapedSearchResults(query, excludedResults, limit = TARGET_RESULT_COUNT) {
@@ -161,12 +155,16 @@ async function getScrapedSearchResults(query, excludedResults, limit = TARGET_RE
     const formatted = scrapedItems.map((item) => ({
         name: item.name,
         price: item.price,
+        store: item.store || null,
+        link: item.link || null,
         scrapedAt
     }));
 
+    const filtered = await filterRelevantItems(query, formatted);
+
     return {
         unavailableStores,
-        results: dedupeResults(formatted, seedKeys).map(toGenericSearchResult).slice(0, needed)
+        results: dedupeResults(filtered.accepted, seedKeys).map(toGenericSearchResult).slice(0, needed)
     };
 }
 

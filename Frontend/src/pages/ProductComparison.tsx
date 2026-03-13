@@ -14,6 +14,7 @@ const ProductComparison = () => {
   const { results, selectedProduct } = useSearch();
   const [comparison, setComparison] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const contextQuery = searchParams.get("context")?.trim() || results?.query || "";
 
   const query = useMemo(
     () => searchParams.get("q")?.trim() || selectedProduct?.name || results?.query || "",
@@ -24,14 +25,14 @@ const ProductComparison = () => {
     if (!query) return;
 
     setLoading(true);
-    compareProducts(query)
+    compareProducts(query, contextQuery)
       .then((data) => setComparison(data))
       .catch((err: any) => {
         setComparison(null);
         toast.error(err.message || "Comparison failed");
       })
       .finally(() => setLoading(false));
-  }, [query]);
+  }, [contextQuery, query]);
 
   if (!query) {
     return (

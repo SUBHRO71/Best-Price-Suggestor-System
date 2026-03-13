@@ -17,13 +17,15 @@ const compareRateLimiter = createRateLimiter({
 router.get("/compare", compareRateLimiter, async (req, res) => {
     try {
         const query = req.query.q?.trim();
+        const contextQuery = req.query.context?.trim() || "";
 
         if (!query) {
             return res.status(400).json({ message: "Query parameter q is required" });
         }
 
         const response = await compareProducts(query, {
-            dbFirst: false
+            dbFirst: false,
+            contextQuery
         });
 
         if (!response.results.length) {

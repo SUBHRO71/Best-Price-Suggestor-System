@@ -4,6 +4,11 @@ const Price = require("../models/Price");
 const scrapeFlipkart = require("./flipkartScraper");
 const scrapeAmazon = require("./amazonScraper");
 const { getCatalogExpiryDate } = require("./catalogCleanupService");
+const {
+    normalizeText,
+    scoreProductRelevance,
+    filterRelevantItems
+} = require("./relevanceFilterService");
 
 const STORE_SCRAPERS = {
     Flipkart: scrapeFlipkart,
@@ -11,27 +16,7 @@ const STORE_SCRAPERS = {
 };
 
 function normalizeQuery(query) {
-    return String(query || "").toLowerCase().trim().replace(/\s+/g, " ");
-}
-
-function tokenize(value) {
-    return normalizeQuery(value)
-        .replace(/[^a-z0-9\s]/g, " ")
-        .split(" ")
-        .map((token) => token.trim())
-        .filter((token) => token.length >= 2);
-}
-
-function buildContextTokens(query) {
-    const stopWords = new Set([
-        "for", "with", "and", "the", "this", "that", "from", "your", "you",
-        "pack", "combo", "piece", "pcs", "set", "big", "small", "size",
-        "mobile", "phone", "smartphone", "cover", "case", "bag", "dry",
-        "water", "waterproof", "plastic", "transparent"
-    ]);
-
-    const tokens = tokenize(query).filter((token) => !stopWords.has(token));
-    return Array.from(new Set(tokens));
+    return normalizeText(query);
 }
 
 function generateQueryVariants(query) {
@@ -58,6 +43,19 @@ function generateQueryVariants(query) {
         .join(" ");
 
     return Array.from(new Set([raw, cleaned, compactTokens, broadTokens].filter(Boolean)));
+}
+
+function buildRetryQueries(query, contextQuery) {
+    return Array.from(
+        new Set(
+            [
+                String(query || "").trim(),
+                String(contextQuery || "").trim(),
+                ...generateQueryVariants(query),
+                ...generateQueryVariants(contextQuery)
+            ].filter(Boolean)
+        )
+    );
 }
 
 function toComparedResult(priceDocs) {
@@ -87,54 +85,12 @@ function latestPricePerStore(priceDocs) {
     return Array.from(latestByStore.values());
 }
 
-function bestScrapedPricePerStore(items) {
-    const bestByStore = new Map();
-
-    for (const item of items) {
-        const existing = bestByStore.get(item.store);
-        if (!existing || item.price < existing.price) {
-            bestByStore.set(item.store, item);
-        }
-    }
-
-    return Array.from(bestByStore.values()).sort((a, b) => a.price - b.price);
-}
-
-function scoreProductMatch(query, item) {
-    const queryTokens = buildContextTokens(query);
-    const titleTokens = new Set(tokenize(item?.name || ""));
-    if (!titleTokens.size) return 0;
-
-    let score = 0;
-    for (const token of queryTokens) {
-        if (titleTokens.has(token)) {
-            score += token.length >= 5 ? 3 : 2;
-        }
-    }
-
-    const normalizedQuery = normalizeQuery(query);
-    const normalizedTitle = normalizeQuery(item?.name || "");
-
-    if (normalizedQuery && normalizedTitle.includes(normalizedQuery)) {
-        score += 8;
-    }
-
-    for (const variant of generateQueryVariants(query).slice(1)) {
-        if (variant && normalizedTitle.includes(normalizeQuery(variant))) {
-            score += 4;
-            break;
-        }
-    }
-
-    return score;
-}
-
 function pickBestMatchingItem(query, items, storeName) {
     const scored = items
         .map((item) => ({
             ...item,
             store: item.store || storeName,
-            matchScore: scoreProductMatch(query, item)
+            matchScore: scoreProductRelevance(query, item).score
         }))
         .filter((item) => item.matchScore > 0);
 
@@ -169,22 +125,27 @@ async function scrapeAllStores(query) {
     };
 }
 
-async function retryMissingStores(query, initialByStore) {
+async function retryStores(queryCandidates, initialByStore, targetStores) {
     const retriedByStore = { ...initialByStore };
-    const variants = generateQueryVariants(query);
+    const searchQueries = Array.isArray(queryCandidates) ? queryCandidates.filter(Boolean) : [];
+    const storesToRetry = targetStores?.length ? targetStores : Object.keys(STORE_SCRAPERS);
 
-    for (const [storeName, scraper] of Object.entries(STORE_SCRAPERS)) {
-        if (retriedByStore[storeName]?.length) continue;
+    for (const storeName of storesToRetry) {
+        const scraper = STORE_SCRAPERS[storeName];
+        if (!scraper) continue;
 
-        for (const variant of variants) {
+        for (const variant of searchQueries) {
             try {
                 const results = await scraper(variant);
                 if (results.length) {
-                    retriedByStore[storeName] = results;
+                    retriedByStore[storeName] = [
+                        ...(retriedByStore[storeName] || []),
+                        ...results
+                    ];
                     break;
                 }
             } catch {
-                retriedByStore[storeName] = [];
+                retriedByStore[storeName] = retriedByStore[storeName] || [];
             }
         }
 
@@ -252,14 +213,47 @@ async function getCachedComparison(query, minStoresRequired) {
     };
 }
 
-async function scrapeAndPersistComparison(query) {
+function flattenStoreResults(byStore) {
+    return Object.entries(byStore).flatMap(([storeName, items]) =>
+        items.map((item) => ({
+            ...item,
+            store: item.store || storeName
+        }))
+    );
+}
+
+function groupResultsByStore(items) {
+    return items.reduce((acc, item) => {
+        if (!acc[item.store]) acc[item.store] = [];
+        acc[item.store].push(item);
+        return acc;
+    }, { Flipkart: [], Amazon: [] });
+}
+
+async function scrapeAndPersistComparison(query, options = {}) {
+    const retryQueries = buildRetryQueries(query, options.contextQuery);
     const initialScrape = await scrapeAllStores(query);
-    const byStore = await retryMissingStores(query, {
+    const storesWithoutRawResults = Object.keys(STORE_SCRAPERS).filter(
+        (storeName) => !initialScrape[storeName]?.length
+    );
+    let byStore = await retryStores(retryQueries, {
         Flipkart: initialScrape.Flipkart,
         Amazon: initialScrape.Amazon
-    });
+    }, storesWithoutRawResults);
 
-    const bestPerStore = Object.entries(byStore)
+    let filtered = await filterRelevantItems(query, flattenStoreResults(byStore));
+    let groupedAccepted = groupResultsByStore(filtered.accepted);
+    const storesWithoutRelevantResults = Object.keys(STORE_SCRAPERS).filter(
+        (storeName) => !groupedAccepted[storeName]?.length
+    );
+
+    if (storesWithoutRelevantResults.length) {
+        byStore = await retryStores(retryQueries.slice(1), byStore, storesWithoutRelevantResults);
+        filtered = await filterRelevantItems(query, flattenStoreResults(byStore));
+        groupedAccepted = groupResultsByStore(filtered.accepted);
+    }
+
+    const bestPerStore = Object.entries(groupedAccepted)
         .map(([storeName, items]) => pickBestMatchingItem(query, items, storeName))
         .filter(Boolean);
 
@@ -328,7 +322,8 @@ async function scrapeAndPersistComparison(query) {
 async function compareProducts(query, options = {}) {
     const {
         dbFirst = false,
-        minStoresRequired = 2
+        minStoresRequired = 2,
+        contextQuery = ""
     } = options;
 
     if (dbFirst) {
@@ -336,7 +331,7 @@ async function compareProducts(query, options = {}) {
         if (cached) return cached;
     }
 
-    return scrapeAndPersistComparison(query);
+    return scrapeAndPersistComparison(query, { contextQuery });
 }
 
 module.exports = {
